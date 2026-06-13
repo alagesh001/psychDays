@@ -11,15 +11,60 @@ const [isRecording, setIsRecording] = useState(false);
   const [selectedPointer, setSelectedPointer] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(20);
   const [mediaRecorder, setMediaRecorder] = useState(null);
-  const handleImageChange = (e) => {
+  const API_BASE = "https://oxadmedia.online/api";
+
+
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
 
     if (file) {
       setImage(URL.createObjectURL(file));
       setPointers([]);
       setPointerDistances([]);
+
+       const formData = new FormData();
+  formData.append("image", file);
+
+  const response = await fetch(
+    `${API_BASE}/upload-audio/uploadpic/image.webp`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const data = await response.json();
+   if (data.success) {
+       console.log("success uploaded");
+
+  }
     }
   };
+  const saveData = async () => {
+  try {
+    const res = await fetch(
+      `${API_BASE}/upload-audio/s/save-data`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          widthPercent,
+          pointers,
+        }),
+      }
+    );
+
+    const data = await res.json();
+
+    console.log(data);
+    alert("Saved");
+  } catch (err) {
+    console.error(err);
+    alert("Save failed");
+  }
+};
  const recordAudioForPointer = async () => {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -37,30 +82,52 @@ const [isRecording, setIsRecording] = useState(false);
       }
     };
 
-    recorder.onstop = () => {
-      const audioBlob = new Blob(chunks, {
-        type: "audio/webm",
-      });
+ recorder.onstop = async () => {
+  const audioBlob = new Blob(chunks, {
+    type: "audio/webm",
+  });
 
-      const audioUrl = URL.createObjectURL(audioBlob);
+  try {
+    const filename = `recording${selectedPointer}`;
 
-      setPointers((prev) =>
-        prev.map((p) =>
-          p.id === selectedPointer
-            ? {
-                ...p,
-                audio: audioUrl,
-                audioBlob,
-              }
-            : p
-        )
-      );
+    const formData = new FormData();
+    formData.append(
+      "audio",
+      audioBlob,
+      `${filename}.webm`
+    );
 
-      stream.getTracks().forEach((track) => track.stop());
+   const response = await fetch(
+  `${API_BASE}/upload-audio/${filename}`,
+  {
+    method: "POST",
+    body: formData,
+  }
+);
 
-      setMediaRecorder(null);
-      setIsRecording(false);
-    };
+    const result = await response.json();
+
+    setPointers((prev) =>
+      prev.map((p) =>
+        p.id === selectedPointer
+          ? {
+              ...p,
+              audio: `${API_BASE}/data/${result.filename}`, // stored filename on server
+            }
+          : p
+      )
+    );
+  } catch (err) {
+    console.error("Upload failed", err);
+  }
+
+  stream.getTracks().forEach((track) =>
+    track.stop()
+  );
+
+  setMediaRecorder(null);
+  setIsRecording(false);
+};
 
     recorder.start();
     setIsRecording(true);
@@ -94,26 +161,34 @@ const stopRecording = () => {
 
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
+  const yPercent = (y / rect.height) * 100;
     const absoluteX = e.clientX;
 
-    const centerX = window.innerWidth / 2;
+const imageCenterX = rect.width / 2;
 
-    const distancePercent =
-      ((absoluteX - centerX) / centerX) * 100;
+const xPercent =
+  ((x - imageCenterX) / imageCenterX) * 100;
+    
 
-    const newPointer = {
-      id: Date.now(),
-      x,
-      y,
-      distancePercent,
-    };
+ const usedIds = pointers.map((p) => p.id);
+
+const nextId = [1, 2, 3, 4, 5].find(
+  (id) => !usedIds.includes(id)
+);
+
+const newPointer = {
+  id: nextId,
+  x,
+  y,
+  xPercent,
+  yPercent
+};
 
     setPointers((prev) => [...prev, newPointer]);
 
     setPointerDistances((prev) => [
       ...prev,
-      distancePercent,
+      xPercent,yPercent
     ]);
 
     setIsAddingPointer(false);
@@ -140,6 +215,12 @@ const stopRecording = () => {
         </label>
         {image && (
           <>
+          <button
+  onClick={saveData}
+  className="px-4 py-2 bg-blue-500 text-white rounded"
+>
+  Save
+</button>
             <button
               onClick={decreaseSize}
               className="px-3 py-2 bg-red-500 text-white rounded"
@@ -157,14 +238,31 @@ const stopRecording = () => {
             </button>
           </>
         )}
- {image && pointers.length < 5 && (
-          <button
-            onClick={handleAddPointer}
-            className="px-4 py-2 bg-green-500 text-white rounded"
-          >
-            Add Pointer
-          </button>
-        )}
+{image && (
+  <>
+    {pointers.length < 5 && (
+      <button
+        onClick={handleAddPointer}
+        className="px-4 py-2 bg-green-500 text-white rounded"
+      >
+        Add Pointer
+      </button>
+    )}
+
+    {pointers.length > 0 && (
+      <button
+        onClick={() => {
+          setPointers([]);
+          setPointerDistances([]);
+          setSelectedPointer(null);
+        }}
+        className="px-4 py-2 bg-red-500 text-white rounded ml-2"
+      >
+        Clear All Pointers
+      </button>
+    )}
+  </>
+)}
       </div>
 
       {image && (
@@ -220,7 +318,7 @@ const stopRecording = () => {
   </>
 )}
 
-            <button
+            {/* <button
               className="px-3 py-2 bg-red-500 text-white rounded"
               onClick={() => {
                 setPointers((prev) =>
@@ -233,7 +331,7 @@ const stopRecording = () => {
               }}
             >
               Remove Pointer
-            </button>
+            </button> */}
 
             <button
               className="px-3 py-2 bg-gray-300 rounded"
