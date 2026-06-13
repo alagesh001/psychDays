@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import FullWidthImage from "./pages/audioactivity";
 import SharedBoard from "./pages/testsocket";
 
 export default function App() {
@@ -7,7 +8,8 @@ export default function App() {
       {/* Redirect root to /activity */}
 
       {/* Activity page */}
-      <Route path="/activity" element={<SharedBoard />} />
+      <Route path="/" element={<SharedBoard />} />
+      <Route path="/audio" element={<FullWidthImage />} />
 
     </Routes>
   );
