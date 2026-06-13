@@ -92,6 +92,7 @@ const API_BASE = "https://oxadmedia.online/api";
 const IMAGE_BASE = "https://oxadmedia.online/api/fetchimg";
 const [showImageDialog, setShowImageDialog] = useState(false);
   const [selectedDay, setSelectedDay] = useState("Monday");
+
  const [items, setItems] = useState([
   { id: "a", label: "Eye Test", image: `${IMAGE_BASE}/a.webp` },
   { id: "b", label: "Fishing", image: `${IMAGE_BASE}/b.webp` },
@@ -118,6 +119,17 @@ const [showImageDialog, setShowImageDialog] = useState(false);
   y: 60 + Math.floor(index / 6) * 12,
  }))
 );
+const resetTemplates = () => {
+  setItems((prev) => prev.filter((item) => item.isTemplate));
+};
+  const refreshImages = () => {
+  setItems((prev) =>
+    prev.map((item) => ({
+      ...item,
+      image: item.image.split("?")[0] + `?v=${Date.now()}`,
+    }))
+  );
+};
 const replaceImage = async (itemId, file) => {
   const formData = new FormData();
   formData.append("image", file);
@@ -143,60 +155,145 @@ const replaceImage = async (itemId, file) => {
   )
 );
 socket.emit("replacedImage", {
-  roomId: "abc123",
+  roomId: roomId,
   data: updatedItem,
 });
   }
 };
+const fetchItems = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/items/get-items`);
+    const data = await res.json();
+
+    const updated = data.map((item) => ({
+      ...item,
+      image: item.image.split("?")[0] + `?v=${Date.now()}`,
+    }));
+
+    setItems(updated);
+  } catch (err) {
+    console.error("Failed to fetch items:", err);
+  }
+};
+const saveItems = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/items/save-items`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(items),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Items saved successfully!");
+    }
+  } catch (err) {
+    console.error("Save failed:", err);
+  }
+};
   const sensors = useSensors(useSensor(PointerSensor));
+
+const [showRoomDialog, setShowRoomDialog] = useState(false);
+const [roomError, setRoomError] = useState("");
+const [roomSuccess, setRoomSuccess] = useState("");
+
+  const [isConnected, setIsConnected] = useState(false);
+const [socketError, setSocketError] = useState(null);
+const [roomId, setRoomId] = useState("");
+const connectSocket = () => {
+  if (!roomId.trim()) {
+    setSocketError("Please enter a Room ID");
+    return;
+  }
+
+  setSocketError(null);
+
+  if (!socket.connected) {
+    socket.connect();
+  }
+
+  socket.emit("joinRoom", roomId);
+};
  useEffect(() => {
 
-      socket.emit("daySelected", {roomId: "abc123",data: selectedDay});
+      socket.emit("daySelected", {roomId: roomId,data: selectedDay});
 
   }, [selectedDay]);
-  useEffect(() => {
-    socket.on("connect", () => {
-      socket.emit("joinRoom", "abc123");
-      console.log("Connected:", socket.id);
-    });
+const disconnectSocket = () => {
+  socket.disconnect();
+  setIsConnected(false);
+};
+useEffect(() => {
+  refreshImages();
 
-  socket.on("itemCreated", (newItem) => {
-  setItems((prev) => [...prev, newItem]);
-});
- socket.on("itemMoved", (updatedItem) => {
-          console.log("updatedItem:", updatedItem);
+  const onConnect = () => {
+    setIsConnected(true);
+    console.log("Connected:", socket.id);
+  };
 
-  setItems((prev) =>
-    prev.map((item) =>
-      item.id === updatedItem.id ? updatedItem : item
-    )
-  );
-});
-socket.on("replacedImage", (updatedItem) => {
-  console.log("replacedImage:", updatedItem);
+  const onError = (err) => {
+    setIsConnected(false);
+    setSocketError("Connection failed");
+    console.log(err.message);
+  };
+  const onRoomJoin = () => {
+    setRoomSuccess("Join Success");
+  };
+  const onRoomFull = () => {
+    setRoomError("Room is full. Try another room.");
+  };
 
-  setItems((prev) =>
-    prev.map((item) =>
-      item.id === updatedItem.id
-        ? {
-            ...item,
-            image: updatedItem.image,
-          }
-        : item
-    )
-  );
-});
-socket.on("daySelected", (data) => {
-        console.log("Received daySelected", data);
+  const onItemCreated = (newItem) => {
+    setItems((prev) => [...prev, newItem]);
+  };
 
-      setSelectedDay(data);
-    });
-    return () => {
-      socket.off("itemMoved");
-            socket.off("daySelected");
+  const onItemMoved = (updatedItem) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === updatedItem.id ? updatedItem : item
+      )
+    );
+  };
 
-    };
-  }, []);
+  const onReplacedImage = (updatedItem) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === updatedItem.id
+          ? { ...item, image: updatedItem.image }
+          : item
+      )
+    );
+  };
+
+  const onDaySelected = (data) => {
+    setSelectedDay(data);
+  };
+
+  socket.on("connect", onConnect);
+  socket.on("connect_error", onError);
+  socket.on("roomFull", onRoomFull);
+    socket.on("joinedRoom", onRoomJoin);
+
+  socket.on("itemCreated", onItemCreated);
+  socket.on("itemMoved", onItemMoved);
+  socket.on("replacedImage", onReplacedImage);
+  socket.on("daySelected", onDaySelected);
+
+  return () => {
+    socket.off("connect", onConnect);
+    socket.off("connect_error", onError);
+    socket.off("roomFull", onRoomFull);
+        socket.off("joinedRoom", onRoomJoin);
+
+    socket.off("itemCreated", onItemCreated);
+    socket.off("itemMoved", onItemMoved);
+    socket.off("replacedImage", onReplacedImage);
+    socket.off("daySelected", onDaySelected);
+  };
+}, []);
 const boardRef = useRef(null);
 const COLS = 7;
 const COL_WIDTH = 100 / COLS;
@@ -241,7 +338,7 @@ if (sourceItem.isTemplate) {
 
   setItems((prev) => [...prev, duplicate]);
 
-  socket.emit("itemCreated", {roomId: "abc123",data: duplicate});
+  socket.emit("itemCreated", {roomId: roomId,data: duplicate});
 
   return;
 }
@@ -256,7 +353,7 @@ setItems((prev) =>
       y: item.y + (delta.y / rect.height) * 100,
     };
 
-    socket.emit("itemMoved", {roomId: "abc123",data: updated});
+    socket.emit("itemMoved", {roomId: roomId,data: updated});
 
     return updated;
   })
@@ -284,6 +381,12 @@ setItems((prev) =>
           height: BOARD_HEIGHT,
         }}
       >
+      <button
+  onClick={refreshImages}
+  className="px-4 py-2 bg-red-600 text-white rounded-lg"
+>
+  Refresh Images
+</button>
     <button
   onClick={() => setShowImageDialog(true)}
   className="mt-5 ml-10 mb-10 px-5 py-2.5 rounded-xl
@@ -296,6 +399,79 @@ setItems((prev) =>
 >
   Manage Images
 </button>
+<button
+  onClick={saveItems}
+  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+>
+  Save Layout
+</button>
+<button
+  onClick={fetchItems}
+  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+>
+  Load Items
+</button>
+<button
+  onClick={resetTemplates}
+  className="px-4 py-2 bg-red-600 text-white rounded-lg"
+>
+  Reset
+</button>
+<button
+  onClick={() => setShowRoomDialog(true)}
+  className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+>
+  Join Room
+</button>
+{roomSuccess && (
+  <div className="text-red-600 font-semibold">
+    {roomSuccess}
+  </div>
+)}
+{roomError && (
+  <div className="text-red-600 font-semibold">
+    {roomError}
+  </div>
+)}
+{showRoomDialog && (
+  <div className="z-100 fixed inset-0 bg-black/40 flex items-center justify-center">
+    <div className="bg-white p-5 rounded-lg w-80 space-y-4">
+
+      <h2 className="text-lg font-semibold">Enter Room ID</h2>
+
+      <input
+        type="text"
+        value={roomId}
+        onChange={(e) => setRoomId(e.target.value)}
+        className="w-full border px-3 py-2 rounded"
+        placeholder="Room ID"
+      />
+
+      {socketError && (
+        <p className="text-red-500 text-sm">{socketError}</p>
+      )}
+
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setShowRoomDialog(false)}
+          className="px-3 py-1 bg-gray-300 rounded"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={() => {
+            connectSocket();
+            setShowRoomDialog(false);
+          }}
+          className="px-3 py-1 bg-blue-600 text-white rounded"
+        >
+          Join
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 {showImageDialog && (
   <div
     style={{
