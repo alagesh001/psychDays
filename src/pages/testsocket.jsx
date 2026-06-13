@@ -1,5 +1,6 @@
 import { useState, useEffect,useRef } from "react";
 import { io } from "socket.io-client";
+import handPointer from "../assets/handpointer.webp";
 
 import {
   DndContext,
@@ -94,7 +95,7 @@ const [showImageDialog, setShowImageDialog] = useState(false);
   const [selectedDay, setSelectedDay] = useState("Monday");
 const [openMenu, setOpenMenu] = useState(false);
 const menuRef = useRef(null);
- const [items, setItems] = useState([
+const [items, setItems] = useState([
   { id: "a", label: "Eye Test", image: `${IMAGE_BASE}/a.webp` },
   { id: "b", label: "Fishing", image: `${IMAGE_BASE}/b.webp` },
   { id: "c", label: "Fruit Seat", image: `${IMAGE_BASE}/c.webp` },
@@ -109,20 +110,35 @@ const menuRef = useRef(null);
   { id: "l", label: "Happy", image: `${IMAGE_BASE}/l.webp` },
   { id: "m", label: "Sad", image: `${IMAGE_BASE}/m.webp` },
   { id: "n", label: "Tired", image: `${IMAGE_BASE}/n.webp` },
+
+  // 👉 NEW HAND POINTER ITEM
+  {
+    id: "hand-pointer",
+    label: "Pointer",
+    image: handPointer,
+    isTemplate: false,
+    x: 50,
+    y: 50,
+  },
 ].map((item, index) => ({
   ...item,
-  isTemplate: true,
+  isTemplate: item.id === "hand-pointer" ? false : true,
 
-  // 4 columns
-  x: 5 + (index % 6) * 15,
+  x: item.id === "hand-pointer"
+    ? item.x
+    : 5 + (index % 6) * 15,
 
-  // 3 rows
-  y: 60 + Math.floor(index / 6) * 12,
- }))
-);
+  y: item.id === "hand-pointer"
+    ? item.y
+    : 60 + Math.floor(index / 6) * 12,
+})));
 
 const resetTemplates = () => {
-  setItems((prev) => prev.filter((item) => item.isTemplate));
+  setItems((prev) =>
+    prev.filter(
+      (item) => item.isTemplate || item.id === "hand-pointer"
+    )
+  );
 };
   const refreshImages = () => {
   setItems((prev) =>
@@ -323,10 +339,17 @@ if (!sourceItem) return;
     )
   );
 
+let valuex;
+
+if (sourceItem.id === "hand-pointer") {
+  // direct position (no centering, no snapping adjustment)
+  valuex = (rawPxX / rect.width) * 100;
+} else {
   const centerPx =
     col * colWidthPx + colWidthPx / 2 - boxWidthPx / 2;
 
-  const valuex = (centerPx / rect.width) * 100;
+  valuex = (centerPx / rect.width) * 100;
+}
 
 if (sourceItem.isTemplate) {
   const duplicate = {
