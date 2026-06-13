@@ -10,7 +10,7 @@ export default function App() {
 
       {/* Activity page */}
       <Route path="/" element={<SharedBoard />} />
-      <Route path="/audio" element={<FullWidthImage />} />
+      <Route path="/audioedit" element={<FullWidthImage />} />
       <Route path="/activity2" element={<AudioActivityViewer />} />
 
     </Routes>
