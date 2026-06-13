@@ -15,10 +15,9 @@ import { CSS } from "@dnd-kit/utilities";
 const socket = io("https://oxadmedia.online");
 
 const BOARD_WIDTH = window.innerWidth;
-const BOARD_HEIGHT = 800;
+const BOARD_HEIGHT = 1200;
 const ITEM_SIZE = 80; // since w-20 = 5rem = 80px
 const IMAGE_BASE = "https://oxadmedia.online/images";
-
 function DraggableItem({ item }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: item.id,
@@ -33,6 +32,7 @@ function DraggableItem({ item }) {
     left: `${item.x}%`,
     top: `${item.y }%`,
     transform: CSS.Translate.toString(transform),
+    zIndex: item.id === "hand-pointer" ? 9999 : 10,
   }}
 >
      <div
@@ -70,6 +70,8 @@ export default function SharedBoard() {
       window.removeEventListener("resize", handleResize);
     };
   }, []);
+  const [loadingText, setLoadingText] = useState("Fetching data...");
+
   const days = [
     "Monday",
     "Tuesday",
@@ -89,6 +91,7 @@ const dayColors = {
   Saturday: "from-orange-500 to-red-400",
   Sunday: "from-indigo-500 to-blue-400",
 };
+const [loadingData, setLoadingData] = useState(false);
 const API_BASE = "https://oxadmedia.online/api";
 const IMAGE_BASE = "https://oxadmedia.online/api/fetchimg";
 const [showImageDialog, setShowImageDialog] = useState(false);
@@ -110,15 +113,20 @@ const [items, setItems] = useState([
   { id: "l", label: "Happy", image: `${IMAGE_BASE}/l.webp` },
   { id: "m", label: "Sad", image: `${IMAGE_BASE}/m.webp` },
   { id: "n", label: "Tired", image: `${IMAGE_BASE}/n.webp` },
-
+{ id: "o", label: "School", image: `${IMAGE_BASE}/i.webp` },
+  { id: "p", label: "School Bus", image: `${IMAGE_BASE}/j.webp` },
+  { id: "q", label: "Angry", image: `${IMAGE_BASE}/k.webp` },
+  { id: "r", label: "Happy", image: `${IMAGE_BASE}/l.webp` },
+  { id: "s", label: "Sad", image: `${IMAGE_BASE}/m.webp` },
+  { id: "t", label: "Tired", image: `${IMAGE_BASE}/n.webp` },
   // 👉 NEW HAND POINTER ITEM
   {
     id: "hand-pointer",
     label: "Pointer",
     image: handPointer,
     isTemplate: false,
-    x: 50,
-    y: 50,
+    x: 60,
+    y: 0,
   },
 ].map((item, index) => ({
   ...item,
@@ -130,7 +138,7 @@ const [items, setItems] = useState([
 
   y: item.id === "hand-pointer"
     ? item.y
-    : 60 + Math.floor(index / 6) * 12,
+    : 40 + Math.floor(index / 6) * 8,
 })));
 
 const resetTemplates = () => {
@@ -178,19 +186,25 @@ socket.emit("replacedImage", {
 });
   }
 };
+
 const fetchItems = async () => {
+  setLoadingData(true);
+
   try {
     const res = await fetch(`${API_BASE}/items/get-items`);
     const data = await res.json();
 
-    const updated = data.map((item) => ({
+    const updatedItems = data.items.map((item) => ({
       ...item,
       image: item.image.split("?")[0] + `?v=${Date.now()}`,
     }));
 
-    setItems(updated);
+    setItems(updatedItems);
+    setSelectedDay(data.selectedDay);
   } catch (err) {
     console.error("Failed to fetch items:", err);
+  } finally {
+    setLoadingData(false);
   }
 };
 const saveItems = async () => {
@@ -200,7 +214,10 @@ const saveItems = async () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(items),
+      body: JSON.stringify({
+        items,
+        selectedDay,
+      }),
     });
 
     const data = await res.json();
@@ -244,6 +261,7 @@ const disconnectSocket = () => {
   setIsConnected(false);
 };
 useEffect(() => {
+  fetchItems();
   refreshImages();
 
   const onConnect = () => {
@@ -406,7 +424,12 @@ setItems((prev) =>
         }}
       >
         <div className="mt-5 ml-5 flex items-center gap-4 flex-wrap">
-
+  <button
+  onClick={saveItems}
+  className="px-4 py-2 bg-orange-600 text-white rounded-lg"
+>
+  Save
+</button>
       <button
   onClick={refreshImages}
   className="px-4 py-2 bg-blue-600 text-white rounded-lg"
@@ -439,15 +462,7 @@ setItems((prev) =>
         Manage Images
       </button>
 
-      <button
-        onClick={() => {
-          saveItems();
-          setOpenMenu(false);
-        }}
-        className="w-full text-left px-4 py-2 hover:bg-gray-100"
-      >
-        Save Layout
-      </button>
+     
 
       <button
         onClick={() => {
@@ -490,6 +505,18 @@ setItems((prev) =>
   </div>
 )}
 </div>
+{loadingData && (
+  <div className="fixed inset-0 bg-white/40 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+    
+    <div className="w-10 h-10 border-4 border-gray-300 border-t-gray-700 rounded-full animate-spin" />
+
+   <p className="mt-3 text-sm text-gray-700 font-medium">
+  {loadingText}
+</p>
+
+  </div>
+)}
+
 {showRoomDialog && (
   <div className="z-100 fixed inset-0 bg-black/40 flex items-center justify-center">
     <div className="bg-white p-5 rounded-lg w-80 space-y-4">
