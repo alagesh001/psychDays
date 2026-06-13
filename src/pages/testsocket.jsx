@@ -1,6 +1,5 @@
 import { useState, useEffect,useRef } from "react";
 import { io } from "socket.io-client";
-import handPointer from "../assets/handpointer.webp";
 
 import {
   DndContext,
@@ -123,7 +122,7 @@ const [items, setItems] = useState([
   {
     id: "hand-pointer",
     label: "Pointer",
-    image: handPointer,
+    image: `${IMAGE_BASE}/handpointer.webp`,
     isTemplate: false,
     x: 60,
     y: 0,
