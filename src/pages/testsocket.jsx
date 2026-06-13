@@ -1,19 +1,6 @@
 import { useState, useEffect,useRef } from "react";
 import { io } from "socket.io-client";
-import eyetest from "../assets/eyetest.png";
-import fishing from "../assets/fishing.png";
-import fruitseat from "../assets/fruitseat.png";
-import icecream from "../assets/icecream.png";
-import ipad from "../assets/ipad.png";
-import oclass from "../assets/oclass.png";
-import oclass2 from "../assets/oclass2.png";
-import running from "../assets/running.png";
-import school from "../assets/school.png";
-import schoolbus from "../assets/schoolbus.png";
-import angry from "../assets/emoji/angry.png";
-import happy from "../assets/emoji/happy.png";
-import sad from "../assets/emoji/sad.png";
-import tired from "../assets/emoji/sleepy.png";
+
 import {
   DndContext,
   PointerSensor,
@@ -29,6 +16,7 @@ const socket = io("https://oxadmedia.online");
 const BOARD_WIDTH = window.innerWidth;
 const BOARD_HEIGHT = 800;
 const ITEM_SIZE = 80; // since w-20 = 5rem = 80px
+const IMAGE_BASE = "https://oxadmedia.online/images";
 
 function DraggableItem({ item }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -90,6 +78,7 @@ export default function SharedBoard() {
     "Saturday",
     "Sunday",
   ];
+
 const dayColors = {
   Monday: "from-blue-500 to-cyan-400",
   Tuesday: "from-green-500 to-emerald-400",
@@ -99,25 +88,25 @@ const dayColors = {
   Saturday: "from-orange-500 to-red-400",
   Sunday: "from-indigo-500 to-blue-400",
 };
+const API_BASE = "https://oxadmedia.online/api";
+const IMAGE_BASE = "https://oxadmedia.online/api/fetchimg";
+const [showImageDialog, setShowImageDialog] = useState(false);
   const [selectedDay, setSelectedDay] = useState("Monday");
  const [items, setItems] = useState([
-  { id: "happy", label: "Happy", image: happy },
-  { id: "sad", label: "Sad", image: sad },
-  { id: "angry", label: "Angry", image: angry },
-  { id: "tired", label: "Tired", image: tired },
-
-  { id: "eyetest", label: "Eye Test", image: eyetest },
-  { id: "fishing", label: "Fishing", image: fishing },
-  { id: "fruitseat", label: "Fruit Seat", image: fruitseat },
-  { id: "icecream", label: "Ice Cream", image: icecream },
-
-  { id: "ipad", label: "iPad", image: ipad },
-  { id: "oclass", label: "Class", image: oclass },
-  { id: "oclass2", label: "Class 2", image: oclass2 },
-  { id: "running", label: "Running", image: running },
-
-  { id: "school", label: "School", image: school },
-  { id: "schoolbus", label: "School Bus", image: schoolbus },
+  { id: "a", label: "Eye Test", image: `${IMAGE_BASE}/a.webp` },
+  { id: "b", label: "Fishing", image: `${IMAGE_BASE}/b.webp` },
+  { id: "c", label: "Fruit Seat", image: `${IMAGE_BASE}/c.webp` },
+  { id: "d", label: "Ice Cream", image: `${IMAGE_BASE}/d.webp` },
+  { id: "e", label: "iPad", image: `${IMAGE_BASE}/e.webp` },
+  { id: "f", label: "Class", image: `${IMAGE_BASE}/f.webp` },
+  { id: "g", label: "Class 2", image: `${IMAGE_BASE}/g.webp` },
+  { id: "h", label: "Running", image: `${IMAGE_BASE}/h.webp` },
+  { id: "i", label: "School", image: `${IMAGE_BASE}/i.webp` },
+  { id: "j", label: "School Bus", image: `${IMAGE_BASE}/j.webp` },
+  { id: "k", label: "Angry", image: `${IMAGE_BASE}/k.webp` },
+  { id: "l", label: "Happy", image: `${IMAGE_BASE}/l.webp` },
+  { id: "m", label: "Sad", image: `${IMAGE_BASE}/m.webp` },
+  { id: "n", label: "Tired", image: `${IMAGE_BASE}/n.webp` },
 ].map((item, index) => ({
   ...item,
   isTemplate: true,
@@ -126,18 +115,48 @@ const dayColors = {
   x: 5 + (index % 6) * 15,
 
   // 3 rows
-  y: 50 + Math.floor(index / 6) * 12,
+  y: 60 + Math.floor(index / 6) * 12,
  }))
 );
+const replaceImage = async (itemId, file) => {
+  const formData = new FormData();
+  formData.append("image", file);
 
+  const response = await fetch(
+    `${API_BASE}/upload-image/${itemId}.webp`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const data = await response.json();
+
+  if (data.success) {
+    const updatedItem = {
+  id: itemId,
+  image: `${IMAGE_BASE}/${data.filename}?v=${Date.now()}`,
+};
+    setItems((prev) =>
+  prev.map((item) =>
+    item.id === itemId ? { ...item, ...updatedItem } : item
+  )
+);
+socket.emit("replacedImage", {
+  roomId: "abc123",
+  data: updatedItem,
+});
+  }
+};
   const sensors = useSensors(useSensor(PointerSensor));
  useEffect(() => {
 
-      socket.emit("daySelected", selectedDay);
+      socket.emit("daySelected", {roomId: "abc123",data: selectedDay});
 
   }, [selectedDay]);
   useEffect(() => {
     socket.on("connect", () => {
+      socket.emit("joinRoom", "abc123");
       console.log("Connected:", socket.id);
     });
 
@@ -150,6 +169,20 @@ const dayColors = {
   setItems((prev) =>
     prev.map((item) =>
       item.id === updatedItem.id ? updatedItem : item
+    )
+  );
+});
+socket.on("replacedImage", (updatedItem) => {
+  console.log("replacedImage:", updatedItem);
+
+  setItems((prev) =>
+    prev.map((item) =>
+      item.id === updatedItem.id
+        ? {
+            ...item,
+            image: updatedItem.image,
+          }
+        : item
     )
   );
 });
@@ -208,7 +241,7 @@ if (sourceItem.isTemplate) {
 
   setItems((prev) => [...prev, duplicate]);
 
-  socket.emit("itemCreated", duplicate);
+  socket.emit("itemCreated", {roomId: "abc123",data: duplicate});
 
   return;
 }
@@ -223,7 +256,7 @@ setItems((prev) =>
       y: item.y + (delta.y / rect.height) * 100,
     };
 
-    socket.emit("itemMoved", updated);
+    socket.emit("itemMoved", {roomId: "abc123",data: updated});
 
     return updated;
   })
@@ -242,6 +275,7 @@ setItems((prev) =>
     </div>
   </div>
 )}
+
      <div
         ref={boardRef}
         className="relative overflow-hidden mx-auto bg-white border"
@@ -250,6 +284,134 @@ setItems((prev) =>
           height: BOARD_HEIGHT,
         }}
       >
+    <button
+  onClick={() => setShowImageDialog(true)}
+  className="mt-5 ml-10 mb-10 px-5 py-2.5 rounded-xl
+             bg-gradient-to-r from-blue-600 to-indigo-600
+             text-white font-semibold shadow-lg
+             hover:from-blue-700 hover:to-indigo-700
+             hover:shadow-xl active:scale-95
+             transition-all duration-200
+             focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+>
+  Manage Images
+</button>
+{showImageDialog && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,.5)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 9999,
+    }}
+  >
+    <div
+      style={{
+        width: "90%",
+        maxWidth: 1000,
+        maxHeight: "80vh",
+        overflow: "auto",
+        background: "#fff",
+        padding: 20,
+        borderRadius: 12,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 20,
+        }}
+      >
+        <h2>Manage Images</h2>
+
+        <button
+          onClick={() =>
+            setShowImageDialog(false)
+          }
+        >
+          Close
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fill,minmax(180px,1fr))",
+          gap: 20,
+        }}
+      >
+        {items
+         .filter((item) => item.isTemplate)
+        .map((item) => (
+          <div
+            key={item.id}
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: 10,
+              padding: 10,
+            }}
+          >
+            <img
+              src={item.image}
+              alt={item.label}
+              style={{
+                width: "100%",
+                height: 120,
+                objectFit: "cover",
+                borderRadius: 8,
+              }}
+            />
+
+            <div
+              style={{
+                marginTop: 8,
+                fontWeight: 600,
+              }}
+            >
+              {item.label}
+            </div>
+
+            <label
+              style={{
+                display: "inline-block",
+                marginTop: 10,
+                background: "#2563eb",
+                color: "#fff",
+                padding: "8px 12px",
+                borderRadius: 6,
+                cursor: "pointer",
+              }}
+            >
+              Replace
+
+              <input
+                hidden
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file =
+                    e.target.files?.[0];
+
+                  if (file) {
+                    replaceImage(
+                      item.id,
+                      file
+                    );
+                  }
+                }}
+              />
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
 <table className="w-full table-fixed border-collapse">    
            <thead>
             {/* TODAY MARKER ROW */}
