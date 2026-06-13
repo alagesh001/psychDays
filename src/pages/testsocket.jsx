@@ -46,9 +46,9 @@ function DraggableItem({ item }) {
     draggable={false}
   />
 
-  <p className="mt-1 text-center text-sm">
+  {/* <p className="mt-1 text-center text-sm">
     {item.label}
-  </p>
+  </p> */}
 </div>
     </div>
   );
@@ -92,7 +92,8 @@ const API_BASE = "https://oxadmedia.online/api";
 const IMAGE_BASE = "https://oxadmedia.online/api/fetchimg";
 const [showImageDialog, setShowImageDialog] = useState(false);
   const [selectedDay, setSelectedDay] = useState("Monday");
-
+const [openMenu, setOpenMenu] = useState(false);
+const menuRef = useRef(null);
  const [items, setItems] = useState([
   { id: "a", label: "Eye Test", image: `${IMAGE_BASE}/a.webp` },
   { id: "b", label: "Fishing", image: `${IMAGE_BASE}/b.webp` },
@@ -119,6 +120,7 @@ const [showImageDialog, setShowImageDialog] = useState(false);
   y: 60 + Math.floor(index / 6) * 12,
  }))
 );
+
 const resetTemplates = () => {
   setItems((prev) => prev.filter((item) => item.isTemplate));
 };
@@ -197,8 +199,7 @@ const saveItems = async () => {
   const sensors = useSensors(useSensor(PointerSensor));
 
 const [showRoomDialog, setShowRoomDialog] = useState(false);
-const [roomError, setRoomError] = useState("");
-const [roomSuccess, setRoomSuccess] = useState("");
+const [roomMessage, setRoomMessage] = useState("");
 
   const [isConnected, setIsConnected] = useState(false);
 const [socketError, setSocketError] = useState(null);
@@ -240,10 +241,10 @@ useEffect(() => {
     console.log(err.message);
   };
   const onRoomJoin = () => {
-    setRoomSuccess("Join Success");
+    setRoomMessage("Join Success");
   };
   const onRoomFull = () => {
-    setRoomError("Room is full. Try another room.");
+    setRoomMessage("Room is full. Try another room.");
   };
 
   const onItemCreated = (newItem) => {
@@ -381,58 +382,91 @@ setItems((prev) =>
           height: BOARD_HEIGHT,
         }}
       >
+        <div className="mt-5 ml-5 flex items-center gap-4 flex-wrap">
+
       <button
   onClick={refreshImages}
-  className="px-4 py-2 bg-red-600 text-white rounded-lg"
->
-  Refresh Images
-</button>
-    <button
-  onClick={() => setShowImageDialog(true)}
-  className="mt-5 ml-10 mb-10 px-5 py-2.5 rounded-xl
-             bg-gradient-to-r from-blue-600 to-indigo-600
-             text-white font-semibold shadow-lg
-             hover:from-blue-700 hover:to-indigo-700
-             hover:shadow-xl active:scale-95
-             transition-all duration-200
-             focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
->
-  Manage Images
-</button>
-<button
-  onClick={saveItems}
-  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
->
-  Save Layout
-</button>
-<button
-  onClick={fetchItems}
-  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
->
-  Load Items
-</button>
-<button
-  onClick={resetTemplates}
-  className="px-4 py-2 bg-red-600 text-white rounded-lg"
->
-  Reset
-</button>
-<button
-  onClick={() => setShowRoomDialog(true)}
   className="px-4 py-2 bg-blue-600 text-white rounded-lg"
 >
-  Join Room
+  Reload Images
 </button>
-{roomSuccess && (
+  <div className="relative inline-block text-left">
+
+  {/* Main button */}
+  <button
+    onClick={() => setOpenMenu(!openMenu)}
+    className="px-5 py-2.5 rounded-xl bg-gray-900 text-white font-semibold shadow-lg hover:bg-gray-800 transition"
+  >
+    Actions ▾
+  </button>
+
+  {/* Dropdown */}
+  {openMenu && (
+    <div 
+     ref={menuRef}
+    className="absolute right-0 mt-2 w-56 bg-white border rounded-xl shadow-xl z-50 overflow-hidden">
+
+      <button
+        onClick={() => {
+          setShowImageDialog(true);
+          setOpenMenu(false);
+        }}
+        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+      >
+        Manage Images
+      </button>
+
+      <button
+        onClick={() => {
+          saveItems();
+          setOpenMenu(false);
+        }}
+        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+      >
+        Save Layout
+      </button>
+
+      <button
+        onClick={() => {
+          fetchItems();
+          setOpenMenu(false);
+        }}
+        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+      >
+        Load Items
+      </button>
+
+      <button
+        onClick={() => {
+          resetTemplates();
+          setOpenMenu(false);
+        }}
+        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+      >
+        Reset
+      </button>
+
+      <button
+        onClick={() => {
+          setShowRoomDialog(true);
+          setOpenMenu(false);
+        }}
+        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+      >
+        Join Room
+      </button>
+
+    </div>
+  )}
+ 
+
+</div>
+ {roomMessage && (
   <div className="text-red-600 font-semibold">
-    {roomSuccess}
+    {roomMessage}
   </div>
 )}
-{roomError && (
-  <div className="text-red-600 font-semibold">
-    {roomError}
-  </div>
-)}
+</div>
 {showRoomDialog && (
   <div className="z-100 fixed inset-0 bg-black/40 flex items-center justify-center">
     <div className="bg-white p-5 rounded-lg w-80 space-y-4">
@@ -543,14 +577,14 @@ setItems((prev) =>
               }}
             />
 
-            <div
+            {/* <div
               style={{
                 marginTop: 8,
                 fontWeight: 600,
               }}
             >
               {item.label}
-            </div>
+            </div> */}
 
             <label
               style={{
