@@ -11,7 +11,7 @@ export default function App() {
   return (
      <RoomProvider>
       <Routes>
-        <Route path="/" element={<DragImage />} />
+        <Route path="/" element={<Home />} />
         <Route path="/activity1" element={<SharedBoard />} />
         <Route path="/audioedit" element={<FullWidthImage />} />
         <Route path="/activity2" element={<AudioActivityViewer />} />

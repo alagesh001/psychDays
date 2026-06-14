@@ -729,7 +729,7 @@ onClick={() => handleClick(day)}
                 {days.map((day) => (
                 <td
   key={`${day}-${row}`}
-  onClick={() => handleClick(day)}
+ 
   className={`border border-gray-300
     h-24
     cursor-pointer transition-all
