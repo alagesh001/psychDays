@@ -1,5 +1,6 @@
 import { useState, useEffect,useRef } from "react";
-import { io } from "socket.io-client";
+import { socket } from "../components/socketget";
+import { useRoom } from "../components/roomprovider";
 
 import {
   DndContext,
@@ -11,7 +12,6 @@ import {
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 
-const socket = io("https://oxadmedia.online");
 
 const BOARD_WIDTH = window.innerWidth;
 const BOARD_HEIGHT = 1200;
@@ -55,6 +55,8 @@ function DraggableItem({ item }) {
 }
 
 export default function SharedBoard() {
+    const { roomIdGlobal } = useRoom();
+
    const [isPortrait, setIsPortrait] = useState(
     window.innerHeight > window.innerWidth
   );
@@ -235,7 +237,20 @@ const [roomMessage, setRoomMessage] = useState("");
 
   const [isConnected, setIsConnected] = useState(false);
 const [socketError, setSocketError] = useState(null);
-const [roomId, setRoomId] = useState("");
+const [roomId, setRoomId] = useState(roomIdGlobal);
+const handleClick = (day) => {
+  setSelectedDay(day);
+ // console.log("handlclick:", socket.id);
+
+  if (!socket.connected) {
+    socket.connect();
+  }
+
+ // console.log("EMITTING daySelected:", day);
+
+        socket.emit("daySelected", {roomId: roomId,data: day});
+
+};
 const connectSocket = () => {
   if (!roomId.trim()) {
     setSocketError("Please enter a Room ID");
@@ -250,11 +265,12 @@ const connectSocket = () => {
 
   socket.emit("joinRoom", roomId);
 };
- useEffect(() => {
+//  useEffect(() => {
+//   console.log("useeffect:", socket.id);
 
-      socket.emit("daySelected", {roomId: roomId,data: selectedDay});
+//       socket.emit("daySelected", {roomId: roomId,data: selectedDay});
 
-  }, [selectedDay]);
+//   }, [selectedDay]);
 const disconnectSocket = () => {
   socket.disconnect();
   setIsConnected(false);
@@ -274,6 +290,7 @@ useEffect(() => {
     console.log(err.message);
   };
   const onRoomJoin = () => {
+
     setRoomMessage("Join Success");
   };
   const onRoomFull = () => {
@@ -483,7 +500,7 @@ setItems((prev) =>
         Reset
       </button>
 
-      <button
+      {/* <button
         onClick={() => {
           setShowRoomDialog(true);
           setOpenMenu(false);
@@ -491,7 +508,7 @@ setItems((prev) =>
         className="w-full text-left px-4 py-2 hover:bg-gray-100"
       >
         Join Room
-      </button>
+      </button> */}
 
     </div>
   )}
@@ -691,7 +708,7 @@ setItems((prev) =>
   {days.map((day) => (
     <th
   key={day}
-  onClick={() => setSelectedDay(day)}
+onClick={() => handleClick(day)}
   className={`w-[14.2857%] border border-gray-300 py-2 text-center cursor-pointer
     bg-gradient-to-r ${dayColors[day]}
     ${
@@ -712,7 +729,7 @@ setItems((prev) =>
                 {days.map((day) => (
                 <td
   key={`${day}-${row}`}
-  onClick={() => setSelectedDay(day)}
+  onClick={() => handleClick(day)}
   className={`border border-gray-300
     h-24
     cursor-pointer transition-all
