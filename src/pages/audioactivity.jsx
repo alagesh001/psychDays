@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 
 export default function FullWidthImage() {
   const [image, setImage] = useState(null);
@@ -13,7 +13,20 @@ const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const API_BASE = "https://oxadmedia.online/api";
 
+const [isPortrait, setIsPortrait] = useState(
+    window.innerHeight > window.innerWidth
+  );
+   useEffect(() => {
+    const handleResize = () => {
+      setIsPortrait(window.innerHeight > window.innerWidth);
+    };
 
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
   const handleImageChange = async (e) => {
     const file = e.target.files[0];
 
@@ -112,7 +125,7 @@ const [isRecording, setIsRecording] = useState(false);
         p.id === selectedPointer
           ? {
               ...p,
-              audio: `${API_BASE}/data/${result.filename}`, // stored filename on server
+              audio: `${API_BASE}/data/${result.filename}?v=${Date.now()}`, // stored filename on server
             }
           : p
       )
@@ -203,6 +216,15 @@ const newPointer = {
 
   return (
     <div className="w-screen min-h-screen bg-gray-100">
+       {isPortrait && (
+  <div className="fixed inset-0 bg-white z-50">
+    <div className="w-full text-center pt-8">
+      <h1 className="text-2xl font-bold">
+        Please rotate your device to landscape mode
+      </h1>
+    </div>
+  </div>
+)}
       <div className="p-4 flex items-center gap-2">
         <label className="px-4 py-2 bg-blue-500 text-white rounded cursor-pointer">
           Add Image
